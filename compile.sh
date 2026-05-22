@@ -24,5 +24,5 @@ cd ..
 mkdir -p build
 cp $(realpath libcotp/build/libcotp.so) build/libcotp.so.4
 
-cc main.c -o build/main -lsqlite3 -l:libcotp.so.4 -Lbuild -Wl,-rpath,'$ORIGIN'
+cc main.c -o build/totptui -lsqlite3 -l:libcotp.so.4 -Lbuild -Wl,-rpath,'$ORIGIN'
 

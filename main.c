@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
 #include "libcotp/src/cotp.h"
@@ -20,6 +21,35 @@ Pair pairs[100] = {};
 int pair_count = 0;
 sqlite3 *db;
 volatile sig_atomic_t running = 1;
+
+void usage() {
+    printf(
+        "usage:\n"
+        "  totptui add <label> <key>    add key\n"
+        "  totptui add <label> <uri>    add key\n"
+        "  totptui del <label>          delete key\n"
+        "  totptui                      show live tui\n"
+        "\n"
+        "db stored at: $XDG_DATA_DIR/totptui.db\n"
+    );
+}
+
+
+const char *get_xdg_data_home(void) {
+    const char *xdg = getenv("XDG_DATA_DIR");
+    if (xdg) return xdg;
+
+    const char *home = getenv("HOME");
+    if (!home) {
+        return NULL;
+    }
+
+    static char path[4096];
+    snprintf(path, sizeof(path), "%s/.local/share", home);
+    
+    return path;
+}
+
 
 void read_all() {
     sqlite3_stmt *stmt;
@@ -71,6 +101,11 @@ void delete(const char *name) {
 }
 
 void start_tui() {
+    if (pair_count == 0) {
+        printf("You don't have any keys yet.\n");
+        usage();
+        return;
+    }
     cotp_error_t err;
     while (running) {
         time_t now = time(NULL);
@@ -128,14 +163,8 @@ void run(int argc, char *argv[]) {
             delete(name);
             return;
         }
-        printf(
-            "totptui by Samuraien2\n"
-            "usage:\n"
-            "  totptui add <label> <key>    add key\n"
-            "  totptui add <label> <uri>    add key\n"
-            "  totptui del <label>          delete key\n"
-            "  totptui                      show live tui\n"
-        );
+        printf("totptui by Samuraien2 v0.2\n");
+        usage();
         return;
     }
     read_all();
@@ -151,8 +180,12 @@ int main(int argc, char *argv[]) {
     sa.sa_flags = 0;
 
     sigaction(SIGINT, &sa, NULL);
+
+    char db_path[4096];
+    const char *xdg_data_home = get_xdg_data_home();
+    snprintf(db_path, sizeof(db_path), "%s/totptui.db", xdg_data_home);
     
-    int rc = sqlite3_open("key.db", &db);
+    int rc = sqlite3_open(db_path, &db);
     if (rc) {
         printf("Can't open DB: %s\n", sqlite3_errmsg(db));
         return 1;
